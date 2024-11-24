@@ -78,7 +78,7 @@ Create a state machine that contains the following Lambda functions.
 ![Design](./aws/figures/design.jpg)
 </div>
 
-1. Initialize: Create a lambda function (e.g. `data-parallel-init`) with the [lambda_initializer](./aws/lambda/lambda_initializer.py). 
+1. Initialize: Create a lambda function (e.g. `data-parallel-init`) with the [initializer](./aws/lambda/initializer.py). 
    1. Attach necessary permissions to the execution role: `AmazonS3FullAccess`, `AWSLambda_FullAccess`, `AWSLambdaBasicExecutionRole`, `loudWatchActionsEC2Access`.
    2. Create a cloudwatch log group with the same name as `/aws/lambda/data-parallel-init`. Log group helps debugging errors.
    3. This script creates an array of job configs based on the input payload for each file. Then save it as `payload.json` in the `bucket`.
@@ -87,7 +87,7 @@ Create a state machine that contains the following Lambda functions.
    2. Fetch the file from `data_bucket/data_prefix` folder.
    3. Run inference and benchmark the execution info.
    4. Save the json file in `result_path` location as `rank_no.json`.
-3. Summarize: Create a Lambda using [lambda_summarizer.py](./aws/lambda/lambda_summarizer.py). Same role permissions as the Initialize. 
+3. Summarize: Create a Lambda using [summarizer.py](./aws/lambda/summarizer.py). Same role permissions as the Initialize. 
    1. Reads the result json files created in the previous state.
    2. Concatenates all to get `combined_data.json` and saves it at `result_path`.
 
