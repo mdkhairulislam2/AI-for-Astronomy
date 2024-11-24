@@ -12,9 +12,9 @@ This proposes a novel **Cloud-based Astronomy Inference (CAI)** framework for da
 A brief description of the workflow:
 
 1. *Initialize*: Based on the input payload ([Sample input](./aws/demo%20input.json)) list the partition files and config for each job. Returns an array.
-2. *Distributed Model Inference*: Runs distributed map of Lambda executions based on the array returned by previous state. Each of these jobs:
-   1. Load the code, pretrained AI model in a container. 
-   2. Download a partition file as specified in input config. The paritions are created and uploaded to a S3 bucket beforehand.
+2. *Distributed Model Inference*: Runs distributed map of Lambda executions based on the array returned by the previous state. Each of these jobs:
+   1. Load the code, pre-trained AI model in a container. 
+   2. Download a partition file as specified in the input config. The paritions are created and uploaded to an S3 bucket beforehand.
    3. Run inference on the file and write the execution info to the `result_path`.
 3. *Summarize*: Summarize the results returned by each lambda execution in the previous distributed map. Concatenate all of those result.json files into a single combined_data.json.
 
@@ -24,9 +24,9 @@ A brief description of the workflow:
 
 ### Data Processing
 
-The whole data needs to be split into smaller chunks so that we can run parallel executions on them.
+All the data needs to be split into smaller chunks to run parallel executions on them.
 
-1. Get the total dataset fro [Google drive](https://drive.google.com/drive/folders/18vX8-6LcGOmRyTbkJwMDOgQY15nGWves?usp=sharing).
+1. Get the total dataset from [Google Drive](https://drive.google.com/drive/folders/18vX8-6LcGOmRyTbkJwMDOgQY15nGWves?usp=sharing).
 2. Split into smaller chunks (e.g. 10MB) using the [split_data.py](./aws/split_data.py).
 3. Now upload those file partitions into a S3 bucket.
 
@@ -36,7 +36,7 @@ Upload the [Anomaly Detection](./code/Anomaly%20Detection/) folder into a S3 buc
 
 ### Input Payload
 
-This is passed to the state machine as input. It assumes the code and data are loaded into a S3 bucket named `cosmicai-data`. You can update the lambda functions to change it. The following is a [sample input payload](./aws/demo%20input.json):
+This is passed to the state machine as input. It assumes the code and data are loaded into an S3 bucket named `cosmicai-data`. You can update the lambda functions to change it. The following is a [sample input payload](./aws/demo%20input.json):
 
 ```json
 {
@@ -46,26 +46,26 @@ This is passed to the state machine as input. It assumes the code and data are l
   "object_type": "folder",
   "S3_object_name": "Anomaly Detection",
   "script": "/tmp/Anomaly Detection/Inference/inference.py",
-  "result_path": "result-partition-100MB/1GB/1",
+  "result_path": "result-partition-25MB/1GB/1",
   "data_bucket": "cosmicai-data",
-  "data_prefix": "100MB"
+  "data_prefix": "25MB"
 }
 ```
 
 This means
 
 * The [Anomaly Detection](./code/Anomaly%20Detection/) folder is uploaded in `cosmicai-data` bucket. 
-* The partition files are in `cosmicai-data/100MB` folder (`data_bucket/data_prefix`). 
+* The partition files are in `cosmicai-data/25MB` folder (`data_bucket/data_prefix`). 
 * Our inference batch size is 512.
 * This is running for `1GB` data.
-* The results are saved in `bucket/result_path` which is `cosmicai-data/result-partition-100MB/1GB/1` in this case.
-* We set the file limit to 11, since 1GB file with 100MB partition size will need ceil(1042MB / 100MB) = 11 files. Using 22 files here will run ro 2GB data. See the [total_execution_time.csv](./aws/results/total_execution_time.csv) for what should be the file_limit for different partitions and data sizes.
+* The results are saved in `bucket/result_path` which is `cosmicai-data/result-partition-25MB/1GB/1` in this case.
+* We set the file limit to 41 since 1GB file with 25MB partition size will need ceil(1042MB / 25MB) = 11 files. Using 82 files here will run for 2GB of  data. See the [total_execution_time.csv](./aws/results/total_execution_time.csv) for what should be the file_limit for different partitions and data sizes.
 
 If you need to change more
 
-* We run each experiment 3 times. Hence `1GB/1`, `1GB/2` and `1GB/3`.
-* To benchmark for different batch sizes (32, 64, 128, 256, 512), when keeping the data size same, I saved them in `Batches` subfolder. For example, `result-partition-100MB/1GB/Batches/`.
-* If you are running your own experiments, just ensure you change the `result_path` to a different folder (e.g. `team1/result-partition-100MB/1GB/1` is ok).
+* We ran each experiment 3 times. Hence `1GB/1`, `1GB/2` and `1GB/3`.
+* To benchmark for different batch sizes (32, 64, 128, 256, 512), when keeping the data size the same, I saved them in `Batches` subfolder. For example, `result-partition-25MB/1GB/Batches/`.
+* If you are running your own experiments, just ensure you change the `result_path` to a different folder (e.g. `team1/result-partition-25MB/1GB/1` is ok).
 
 ### State Machine
 
@@ -111,7 +111,7 @@ Create a state machine that contains the following Lambda functions.
 
 ### Collect Results
 
-1. I collected the results locally using `aws cli`. After installing and configuring it for the class account running `aws s3 sync s3://cosmicai-data/result-partition-100MB result-partition-100MB` will sync the result file locally.
+1. I collected the results locally using `aws cli`. After installing and configuring it for the class account running `aws s3 sync s3://cosmicai-data/result-partition-25MB result-partition-25MB` will sync the result file locally.
 2. The [stats.py](./aws/stats.py) iterates through each `combined_data.json` file and saves the summary in [batch_varying_results.csv](./aws/results/batch_varying_results.csv) when batch size is changed for 1GB data and [result_stats.csv](./aws/results/result_stats.csv) for varying data sizes.
 3. The total execution times were manually added in [total_execution_time.csv](./aws/results/total_execution_time.csv).
 
@@ -173,10 +173,10 @@ Estimated AWS computation cost summary for inference on the total dataset. Cost 
 
 | Partition | Requests | Duration (s)| Memory | Cost ($) |
 |:---:|:---:|:---:|:---:|:---:|
-| 25MB | 517 | 6.55 | 2.8GB | 0.16 |
-| 50MB | 259 | 11.8 | 4.0GB | 0.20 |
-| 75MB | 173 | 17.6 | 5.9GB| 0.30 |
-| 100MB | 130 | 25 | 7.0GB | 0.38 |
+| 25MB | 517 | 5.70 | 2.8GB | 0.14 |
+| 50MB | 259 | 10.8 | 4.0GB | 0.19 |
+| 75MB | 173 | 15.7 | 5.9GB| 0.27 |
+| 100MB | 130 | 21.0 | 7.0GB | 0.32 |
 
 </div>
 
